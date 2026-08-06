@@ -1,76 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
     <meta charset="UTF-8">
-    <title>WebSocket Chat</title>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0">
+
+    <title>Spring WebSocket Chat</title>
 
     <link rel="stylesheet" href="/css/styles.css">
+
 </head>
+
 <body>
-<div class="app">
-<div class="card" id="username-page">
 
-    <h1>💬 WebSocket Chat</h1>
+<div class="background"></div>
 
-    <p class="subtitle">
-        Join the public chat room
-    </p>
+<!-- ===================== -->
+<!-- Join Modal -->
+<!-- ===================== -->
 
-    <form id="usernameForm">
+<div class="modal" id="joinModal">
 
-        <input
-                id="username"
-                type="text"
-                placeholder="Choose a username"
-                autocomplete="off"
-                required
-        >
+    <div class="modal-card">
 
-        <button type="submit">
-            Join Chat
-        </button>
+        <h1>
+            💬 WebSocket Chat
+        </h1>
 
-    </form>
+        <p class="subtitle">
+            Join the public chat room
+        </p>
 
-    <p id="connection-status"></p>
+        <form id="usernameForm">
 
-</div>
+            <input
+                    id="username"
+                    type="text"
+                    placeholder="Choose your username"
+                    autocomplete="off"
+                    required>
 
-<div class="chat-container hidden" id="chat-page">
+            <button type="submit">
 
-    <div class="chat-header">
+                Join Chat
 
-        <h2>Public Chat</h2>
+            </button>
 
-        <span class="online">
-            ● Connected
-        </span>
+        </form>
+
+        <div class="status">
+
+            <div
+                    class="spinner hidden"
+                    id="spinner">
+            </div>
+
+            <span id="connection-status">
+
+            </span>
+
+        </div>
 
     </div>
 
-    <div id="messages"></div>
+</div>
+
+<!-- ===================== -->
+<!-- CHAT -->
+<!-- ===================== -->
+
+<div class="chat hidden" id="chat-page">
+
+    <!-- HEADER -->
+
+    <header>
+
+        <div class="header-left">
+
+            <div class="avatar" id="myAvatar">
+                A
+            </div>
+
+            <div>
+
+                <h2>
+                    Public Chat
+                </h2>
+
+                <small id="currentUsername">
+
+                </small>
+
+            </div>
+
+        </div>
+
+        <div class="header-right">
+
+            <button
+                    id="themeBtn"
+                    class="icon-btn">
+
+                🌙
+
+            </button>
+
+            <button
+                    id="disconnectBtn"
+                    class="disconnect">
+
+                Disconnect
+
+            </button>
+
+        </div>
+
+    </header>
+
+    <!-- MESSAGES -->
+
+    <div id="messages">
+
+    </div>
+
+    <!-- INPUT -->
 
     <form id="messageForm">
 
         <input
+
                 id="message"
+
                 type="text"
+
                 placeholder="Write a message..."
+
                 autocomplete="off"
-                required
-        >
+
+                required>
 
         <button>
+
             Send
+
         </button>
 
     </form>
 
 </div>
-</div>
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
 <script src="/js/main.js"></script>
