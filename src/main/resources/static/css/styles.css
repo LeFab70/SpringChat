@@ -307,6 +307,10 @@ button:hover{
     font-size: 14px;
 }
 
+#connection-status.error{
+    color: #ef4444;
+}
+
 .spinner{
 
     width:20px;
