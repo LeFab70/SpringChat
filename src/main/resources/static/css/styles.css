@@ -1,0 +1,223 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+
+}
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 25px;
+}
+
+
+.card,
+.chat-container{
+
+    width: 600px;
+    max-width: 100%;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 25px 70px rgba(0,0,0,.25);
+}
+
+.card h1{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.subtitle{
+
+    text-align:center;
+
+    color:#666;
+
+    margin-bottom:25px;
+
+}
+
+form{
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+input{
+
+    flex:1;
+
+    padding:14px;
+
+    border:1px solid #ddd;
+
+    border-radius:10px;
+
+    font-size:15px;
+
+    outline:none;
+
+}
+
+input:focus{
+
+    border-color:#4f46e5;
+
+}
+
+button{
+
+    background:#4f46e5;
+
+    color:white;
+
+    border:none;
+
+    border-radius:10px;
+
+    padding:14px 22px;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+button:hover{
+
+    background:#4338ca;
+
+}
+
+#connection-status{
+
+    text-align:center;
+
+    margin-top:20px;
+
+    font-weight:bold;
+
+    color:#4f46e5;
+
+}
+
+.chat-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:20px;
+
+}
+
+.online{
+
+    color:#16a34a;
+
+    font-weight:bold;
+
+}
+
+#messages{
+
+    height:420px;
+
+    overflow-y:auto;
+
+    background:#f7f7f7;
+
+    border-radius:12px;
+
+    padding:15px;
+
+    margin-bottom:15px;
+
+}
+
+.message-wrapper{
+
+    display:flex;
+
+    margin-bottom:12px;
+
+}
+
+.message{
+
+    max-width:70%;
+
+    padding:12px 16px;
+
+    border-radius:16px;
+
+    word-break:break-word;
+
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+
+}
+
+.other-message{
+
+    justify-content:flex-start;
+
+}
+
+.other-message .message{
+
+    background:white;
+
+    color:#222;
+
+}
+
+.own-message{
+
+    justify-content:flex-end;
+
+}
+
+.own-message .message{
+
+    background:#4f46e5;
+
+    color:white;
+
+}
+
+.own-message strong{
+
+    color:white;
+
+}
+
+.system{
+
+    justify-content:center;
+
+}
+
+.system .message{
+
+    background:#ececec;
+
+    color:#666;
+
+    font-style:italic;
+
+}
