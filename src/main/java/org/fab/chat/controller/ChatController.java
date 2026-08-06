@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.fab.chat.entities.ChatMessage;
 import org.fab.chat.enums.MessageType;
 import org.fab.chat.exception.UsernameAlreadyInUseException;
-import org.fab.chat.repository.ChatMessageRepository;
-import org.fab.chat.service.ActiveUserRegistry;
+import org.fab.chat.services.ActiveUserService;
+import org.fab.chat.services.ChatMessageService;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -15,8 +15,6 @@ import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,15 +22,14 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ChatController {
 
-    private final ChatMessageRepository chatMessageRepository;
-    private final ActiveUserRegistry activeUserRegistry;
+    private final ChatMessageService chatMessageService;
+    private final ActiveUserService activeUserService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
     public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
-        chatMessage.setTimestamp(LocalDateTime.now());
-        return chatMessageRepository.save(chatMessage);
+        return chatMessageService.save(chatMessage);
     }
 
     @MessageMapping("/chat.addUser")
@@ -40,7 +37,7 @@ public class ChatController {
 
         String username = chatMessage.getSender();
 
-        if (!activeUserRegistry.tryAdd(username)) {
+        if (!activeUserService.tryAdd(username)) {
             throw new UsernameAlreadyInUseException(username);
         }
 
@@ -52,15 +49,13 @@ public class ChatController {
         sendHistoryTo(headerAccessor.getSessionId());
 
         chatMessage.setType(MessageType.JOIN);
-        chatMessage.setTimestamp(LocalDateTime.now());
-        ChatMessage saved = chatMessageRepository.save(chatMessage);
+        ChatMessage saved = chatMessageService.save(chatMessage);
 
         messagingTemplate.convertAndSend("/topic/public", saved);
     }
 
     private void sendHistoryTo(String sessionId) {
-        List<ChatMessage> history = chatMessageRepository.findTop50ByOrderByIdDesc();
-        Collections.reverse(history);
+        List<ChatMessage> history = chatMessageService.getRecentHistory();
         messagingTemplate.convertAndSendToUser(sessionId, "/queue/history", history, createHeaders(sessionId));
     }
 
