@@ -14,6 +14,7 @@ Application de chat en temps réel construite avec Spring Boot (WebSocket + STOM
 - **Historique rejoué à la connexion** : à la connexion, un nouvel arrivant reçoit en privé (`/user/queue/history`) les 50 derniers messages de la conversation avant que son propre message `JOIN` ne soit diffusé à tout le monde
 - **Règle métier : pseudo déjà utilisé** — `ActiveUserService` garde en mémoire la liste des pseudos actuellement connectés. Si quelqu'un tente de rejoindre avec un pseudo déjà pris, `ChatController` lève une `UsernameAlreadyInUseException`, interceptée par `StompExceptionHandler` (package `org.fab.chat.exception`) qui renvoie une erreur `USERNAME_TAKEN` uniquement à ce client via `/user/queue/errors` (le pseudo est libéré automatiquement à la déconnexion)
 - **Architecture en couches** : les contrôleurs n'accèdent jamais directement à un repository. `ChatController` et `WebSocketEventListener` appellent des interfaces de service (`ChatMessageService`, `ActiveUserService`, package `org.fab.chat.services`), dont l'implémentation (`ChatMessageServiceImpl`, `ActiveUserServiceImpl`) est la seule à connaître les repositories (`org.fab.chat.repositories`)
+- **Couche DTO** : le contrôleur, le broker STOMP et le frontend ne manipulent que `ChatMessageDto` (`org.fab.chat.dto`) — jamais l'entité JPA `ChatMessage` directement. `ChatMessageMapper` (`org.fab.chat.mapper`) convertit dans les deux sens ; c'est le seul endroit du code qui connaît à la fois le DTO et l'entité. Ça évite d'exposer des détails de persistance (ex. `id`) sur le réseau et permet de faire évoluer le schéma de base sans casser le contrat WebSocket
 
 **Frontend (`src/main/resources/static`)**
 - Popup de connexion (modal) avec animation "Connecting..." (spinner)
@@ -75,11 +76,13 @@ src/main/java/org/fab/chat/
 ├── controller/ChatController.java          # /app/chat.sendMessage, /app/chat.addUser — n'appelle que des services
 ├── config/WebSocketConfig.java             # endpoint /ws, broker /topic + /queue
 ├── config/WebSocketEventListener.java      # broadcast LEAVE + libère le pseudo à la déconnexion
-├── entities/ChatMessage.java               # entité JPA + DTO WebSocket (id, sender, content, type, timestamp)
+├── entities/ChatMessage.java               # entité JPA pure (id, sender, content, type, timestamp)
+├── dto/ChatMessageDto.java                 # payload WebSocket (sender, content, type, timestamp — pas d'id)
+├── mapper/ChatMessageMapper.java           # ChatMessageDto <-> ChatMessage, seul point de contact entre les deux
 ├── repositories/ChatMessageRepository.java # accès base (historique des 50 derniers messages)
 ├── services/
-│   ├── ChatMessageService.java             # interface : save(), getRecentHistory()
-│   ├── ChatMessageServiceImpl.java         # implémentation, seule classe à appeler ChatMessageRepository
+│   ├── ChatMessageService.java             # interface : save(dto), getRecentHistory() — travaille en DTO
+│   ├── ChatMessageServiceImpl.java         # implémentation, seule classe à appeler ChatMessageRepository/Mapper
 │   ├── ActiveUserService.java              # interface : tryAdd(), remove()
 │   └── ActiveUserServiceImpl.java          # implémentation en mémoire (Set thread-safe)
 └── exception/                              # UsernameAlreadyInUseException, StompExceptionHandler, ChatErrorPayload

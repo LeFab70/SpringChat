@@ -2,7 +2,7 @@ package org.fab.chat.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.fab.chat.entities.ChatMessage;
+import org.fab.chat.dto.ChatMessageDto;
 import org.fab.chat.services.ActiveUserService;
 import org.fab.chat.services.ChatMessageService;
 import org.springframework.context.event.EventListener;
@@ -30,11 +30,11 @@ public class WebSocketEventListener {
         if (username != null) {
             log.info("User Disconnected : {}", username);
             activeUserService.remove(username);
-            var chatMessage = ChatMessage.builder()
+            var chatMessageDto = ChatMessageDto.builder()
                     .type(org.fab.chat.enums.MessageType.LEAVE)
                     .sender(username)
                     .build();
-            ChatMessage saved = chatMessageService.save(chatMessage);
+            ChatMessageDto saved = chatMessageService.save(chatMessageDto);
             messagingTemplate.convertAndSend("/topic/public", saved);
         }
     }

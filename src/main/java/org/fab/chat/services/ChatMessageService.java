@@ -1,13 +1,13 @@
 package org.fab.chat.services;
 
-import org.fab.chat.entities.ChatMessage;
+import org.fab.chat.dto.ChatMessageDto;
 
 import java.util.List;
 
 public interface ChatMessageService {
 
-    ChatMessage save(ChatMessage chatMessage);
+    ChatMessageDto save(ChatMessageDto chatMessageDto);
 
-    List<ChatMessage> getRecentHistory();
+    List<ChatMessageDto> getRecentHistory();
 
 }

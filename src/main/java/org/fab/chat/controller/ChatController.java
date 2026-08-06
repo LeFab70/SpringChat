@@ -1,7 +1,7 @@
 package org.fab.chat.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.fab.chat.entities.ChatMessage;
+import org.fab.chat.dto.ChatMessageDto;
 import org.fab.chat.enums.MessageType;
 import org.fab.chat.exception.UsernameAlreadyInUseException;
 import org.fab.chat.services.ActiveUserService;
@@ -28,14 +28,14 @@ public class ChatController {
 
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
-    public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
-        return chatMessageService.save(chatMessage);
+    public ChatMessageDto sendMessage(@Payload ChatMessageDto chatMessageDto) {
+        return chatMessageService.save(chatMessageDto);
     }
 
     @MessageMapping("/chat.addUser")
-    public void addUser(@Payload ChatMessage chatMessage, SimpMessageHeaderAccessor headerAccessor) {
+    public void addUser(@Payload ChatMessageDto chatMessageDto, SimpMessageHeaderAccessor headerAccessor) {
 
-        String username = chatMessage.getSender();
+        String username = chatMessageDto.getSender();
 
         if (!activeUserService.tryAdd(username)) {
             throw new UsernameAlreadyInUseException(username);
@@ -48,14 +48,14 @@ public class ChatController {
         // so their own "joined" event isn't duplicated between history and the live broadcast.
         sendHistoryTo(headerAccessor.getSessionId());
 
-        chatMessage.setType(MessageType.JOIN);
-        ChatMessage saved = chatMessageService.save(chatMessage);
+        chatMessageDto.setType(MessageType.JOIN);
+        ChatMessageDto saved = chatMessageService.save(chatMessageDto);
 
         messagingTemplate.convertAndSend("/topic/public", saved);
     }
 
     private void sendHistoryTo(String sessionId) {
-        List<ChatMessage> history = chatMessageService.getRecentHistory();
+        List<ChatMessageDto> history = chatMessageService.getRecentHistory();
         messagingTemplate.convertAndSendToUser(sessionId, "/queue/history", history, createHeaders(sessionId));
     }
 

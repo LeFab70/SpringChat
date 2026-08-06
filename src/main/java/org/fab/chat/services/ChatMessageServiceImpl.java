@@ -1,7 +1,9 @@
 package org.fab.chat.services;
 
 import lombok.RequiredArgsConstructor;
+import org.fab.chat.dto.ChatMessageDto;
 import org.fab.chat.entities.ChatMessage;
+import org.fab.chat.mapper.ChatMessageMapper;
 import org.fab.chat.repositories.ChatMessageRepository;
 import org.springframework.stereotype.Service;
 
@@ -14,18 +16,20 @@ import java.util.List;
 public class ChatMessageServiceImpl implements ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatMessageMapper chatMessageMapper;
 
     @Override
-    public ChatMessage save(ChatMessage chatMessage) {
-        chatMessage.setTimestamp(LocalDateTime.now());
-        return chatMessageRepository.save(chatMessage);
+    public ChatMessageDto save(ChatMessageDto chatMessageDto) {
+        chatMessageDto.setTimestamp(LocalDateTime.now());
+        ChatMessage saved = chatMessageRepository.save(chatMessageMapper.toEntity(chatMessageDto));
+        return chatMessageMapper.toDto(saved);
     }
 
     @Override
-    public List<ChatMessage> getRecentHistory() {
+    public List<ChatMessageDto> getRecentHistory() {
         List<ChatMessage> history = chatMessageRepository.findTop50ByOrderByIdDesc();
         Collections.reverse(history);
-        return history;
+        return history.stream().map(chatMessageMapper::toDto).toList();
     }
 
 }
