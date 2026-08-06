@@ -1,6 +1,10 @@
+const USERNAME_MAX_LENGTH = 50;
+const MESSAGE_MAX_LENGTH = 1000;
+
 let stompClient = null;
 let username = "";
 let pendingUsername = "";
+let joined = false;
 
 const joinModal = document.querySelector("#joinModal");
 const chatPage = document.querySelector("#chat-page");
@@ -11,7 +15,15 @@ const messageForm = document.querySelector("#messageForm");
 const usernameInput = document.querySelector("#username");
 const messageInput = document.querySelector("#message");
 
+const joinButton = usernameForm.querySelector("button[type=submit]");
+const sendButton = messageForm.querySelector("button");
+
+const usernameCounter = document.querySelector("#usernameCounter");
+const usernameError = document.querySelector("#usernameError");
+const messageCounter = document.querySelector("#messageCounter");
+
 const messages = document.querySelector("#messages");
+const errorToast = document.querySelector("#errorToast");
 
 const status = document.querySelector("#connection-status");
 const spinner = document.querySelector("#spinner");
@@ -26,6 +38,12 @@ usernameForm.addEventListener("submit", attemptJoin);
 messageForm.addEventListener("submit", sendMessage);
 disconnectBtn.addEventListener("click", disconnect);
 themeBtn.addEventListener("click", toggleTheme);
+
+usernameInput.addEventListener("input", updateUsernameField);
+messageInput.addEventListener("input", updateMessageField);
+
+updateUsernameField();
+updateMessageField();
 
 /* ===========================
    THEME
@@ -50,6 +68,34 @@ function toggleTheme() {
 applyTheme(localStorage.getItem("chat-theme") || "light");
 
 /* ===========================
+   FIELD VALIDATION (mirrors ChatMessageDto: sender required/max 50, content max 1000)
+=========================== */
+
+function updateCharCounter(counterEl, length, max) {
+    counterEl.textContent = `${length}/${max}`;
+    counterEl.classList.toggle("limit", length >= max);
+    counterEl.classList.toggle("warn", !counterEl.classList.contains("limit") && length >= max * 0.9);
+}
+
+function updateUsernameField() {
+    const length = usernameInput.value.length;
+    updateCharCounter(usernameCounter, length, USERNAME_MAX_LENGTH);
+
+    if (usernameInput.value.trim() !== "") {
+        usernameError.textContent = "";
+    }
+
+    joinButton.disabled = usernameInput.value.trim() === "";
+}
+
+function updateMessageField() {
+    const length = messageInput.value.length;
+    updateCharCounter(messageCounter, length, MESSAGE_MAX_LENGTH);
+
+    sendButton.disabled = messageInput.value.trim() === "";
+}
+
+/* ===========================
    CONNECTION / JOIN
 =========================== */
 
@@ -60,9 +106,11 @@ function attemptJoin(event) {
     pendingUsername = usernameInput.value.trim();
 
     if (pendingUsername === "") {
+        usernameError.textContent = "Le pseudo est requis.";
         return;
     }
 
+    usernameError.textContent = "";
     setStatus("Connecting to WebSocket...", false);
     spinner.classList.remove("hidden");
 
@@ -85,7 +133,7 @@ function onSocketConnected() {
 
     stompClient.subscribe("/topic/public", onMessageReceived);
     stompClient.subscribe("/user/queue/history", onHistoryReceived);
-    stompClient.subscribe("/user/queue/errors", onJoinError);
+    stompClient.subscribe("/user/queue/errors", onServerError);
 
     sendJoin();
 }
@@ -105,9 +153,14 @@ function sendJoin() {
     );
 }
 
-function onJoinError(payload) {
+function onServerError(payload) {
 
     const error = JSON.parse(payload.body);
+
+    if (joined) {
+        showToast(error.message || "Une erreur est survenue.");
+        return;
+    }
 
     spinner.classList.add("hidden");
 
@@ -118,11 +171,22 @@ function onJoinError(payload) {
     }
 }
 
+let toastTimeout = null;
+
+function showToast(message) {
+    errorToast.textContent = message;
+    errorToast.classList.remove("hidden");
+
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => errorToast.classList.add("hidden"), 4000);
+}
+
 function onHistoryReceived(payload) {
 
     const history = JSON.parse(payload.body);
 
     username = pendingUsername;
+    joined = true;
 
     spinner.classList.add("hidden");
     setStatus("", false);
@@ -160,11 +224,17 @@ function disconnect() {
     stompClient = null;
     username = "";
     pendingUsername = "";
+    joined = false;
 
     messages.innerHTML = "";
     usernameInput.value = "";
+    usernameError.textContent = "";
     setStatus("", false);
     spinner.classList.add("hidden");
+    errorToast.classList.add("hidden");
+
+    updateUsernameField();
+    updateMessageField();
 
     chatPage.classList.add("hidden");
     joinModal.classList.remove("hidden");
@@ -195,6 +265,7 @@ function sendMessage(event) {
     );
 
     messageInput.value = "";
+    updateMessageField();
 
 }
 

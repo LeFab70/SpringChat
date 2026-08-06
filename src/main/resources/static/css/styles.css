@@ -282,6 +282,66 @@ button:hover{
 
 }
 
+button:disabled{
+
+    background:var(--text-light);
+
+    cursor:not-allowed;
+
+    transform:none;
+
+}
+
+/* ===========================
+   FIELD HINTS / VALIDATION
+=========================== */
+
+.field-hint{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-top:8px;
+
+    padding:0 2px;
+
+    font-size:12px;
+
+}
+
+.field-error{
+
+    color:#ef4444;
+
+    font-weight:600;
+
+}
+
+.char-counter{
+
+    color:var(--text-light);
+
+    margin-left:auto;
+
+}
+
+.char-counter.warn{
+
+    color:#f59e0b;
+
+}
+
+.char-counter.limit{
+
+    color:#ef4444;
+
+    font-weight:600;
+
+}
+
 /* ===========================
    CONNECTING
 =========================== */
@@ -348,6 +408,8 @@ button:hover{
 =========================== */
 
 .chat{
+
+    position:relative;
 
     width:min(950px,95vw);
 
@@ -697,11 +759,57 @@ body.dark .system .message{
 
 #messageForm{
 
-    padding:18px 24px;
+    padding:18px 24px 4px;
 
     border-top:1px solid var(--divider);
 
     flex-shrink:0;
+
+}
+
+#messageForm + .field-hint{
+
+    padding:0 24px 14px;
+
+    flex-shrink:0;
+
+}
+
+/* ===========================
+   ERROR TOAST
+=========================== */
+
+.toast{
+
+    position:absolute;
+
+    left:50%;
+
+    bottom:90px;
+
+    transform:translateX(-50%);
+
+    background:#ef4444;
+
+    color:white;
+
+    padding:10px 20px;
+
+    border-radius:12px;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+
+    animation:fadeInUp .25s ease;
+
+    z-index:50;
+
+    max-width:80%;
+
+    text-align:center;
 
 }
 
