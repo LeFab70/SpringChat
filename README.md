@@ -11,10 +11,12 @@ Application de chat en temps réel construite avec Spring Boot (WebSocket + STOM
 - Arrivée d'un utilisateur : `/app/chat.addUser`
 - Diffusion automatique d'un message `LEAVE` quand une session WebSocket se ferme (déconnexion propre ou fermeture d'onglet), via `WebSocketEventListener`
 - **Persistance** : chaque message (`CHAT`, `JOIN`, `LEAVE`) est sauvegardé en base via Spring Data JPA. En développement, la base est H2 en fichier local (`./data/chatdb.mv.db`) — voir la section [Persistance en production](#persistance-en-production-h2-nest-pas-fait-pour-ça) plus bas
+- **Migrations de schéma avec Flyway** : le schéma n'est plus généré automatiquement par Hibernate (`ddl-auto=validate`, Hibernate vérifie juste que le schéma correspond aux entités). Il est créé et versionné par des scripts SQL dans `src/main/resources/db/migration` (`V1__create_chat_message_table.sql`, etc.). Pour changer le schéma : ajouter un nouveau fichier `V2__...sql`, jamais modifier un script déjà appliqué
 - **Historique rejoué à la connexion** : à la connexion, un nouvel arrivant reçoit en privé (`/user/queue/history`) les 50 derniers messages de la conversation avant que son propre message `JOIN` ne soit diffusé à tout le monde
+- **Validation du DTO** : `ChatMessageDto` (Bean Validation) exige un `sender` non vide (max 50 caractères) et limite `content` à 1000 caractères ; `ChatController.sendMessage` refuse en plus un contenu vide/blanc (`InvalidMessageException`, réservé aux messages `CHAT` — un `JOIN`/`LEAVE` n'a légitimement pas de contenu). Toute violation est renvoyée au client fautif via `/user/queue/errors` (codes `VALIDATION_ERROR` / `INVALID_MESSAGE`) sans jamais casser la connexion des autres utilisateurs
 - **Règle métier : pseudo déjà utilisé** — `ActiveUserService` garde en mémoire la liste des pseudos actuellement connectés. Si quelqu'un tente de rejoindre avec un pseudo déjà pris, `ChatController` lève une `UsernameAlreadyInUseException`, interceptée par `StompExceptionHandler` (package `org.fab.chat.exception`) qui renvoie une erreur `USERNAME_TAKEN` uniquement à ce client via `/user/queue/errors` (le pseudo est libéré automatiquement à la déconnexion)
 - **Architecture en couches** : les contrôleurs n'accèdent jamais directement à un repository. `ChatController` et `WebSocketEventListener` appellent des interfaces de service (`ChatMessageService`, `ActiveUserService`, package `org.fab.chat.services`), dont l'implémentation (`ChatMessageServiceImpl`, `ActiveUserServiceImpl`) est la seule à connaître les repositories (`org.fab.chat.repositories`)
-- **Couche DTO** : le contrôleur, le broker STOMP et le frontend ne manipulent que `ChatMessageDto` (`org.fab.chat.dto`) — jamais l'entité JPA `ChatMessage` directement. `ChatMessageMapper` (`org.fab.chat.mapper`) convertit dans les deux sens ; c'est le seul endroit du code qui connaît à la fois le DTO et l'entité. Ça évite d'exposer des détails de persistance (ex. `id`) sur le réseau et permet de faire évoluer le schéma de base sans casser le contrat WebSocket
+- **Couche DTO** : le contrôleur, le broker STOMP et le frontend ne manipulent que `ChatMessageDto` (`org.fab.chat.dto`, un `record` immuable) — jamais l'entité JPA `ChatMessage` directement. `ChatMessageMapper` (`org.fab.chat.mapper`) convertit dans les deux sens ; c'est le seul endroit du code qui connaît à la fois le DTO et l'entité. Ça évite d'exposer des détails de persistance (ex. `id`) sur le réseau et permet de faire évoluer le schéma de base sans casser le contrat WebSocket
 
 **Frontend (`src/main/resources/static`)**
 - Popup de connexion (modal) avec animation "Connecting..." (spinner)
@@ -77,7 +79,7 @@ src/main/java/org/fab/chat/
 ├── config/WebSocketConfig.java             # endpoint /ws, broker /topic + /queue
 ├── config/WebSocketEventListener.java      # broadcast LEAVE + libère le pseudo à la déconnexion
 ├── entities/ChatMessage.java               # entité JPA pure (id, sender, content, type, timestamp)
-├── dto/ChatMessageDto.java                 # payload WebSocket (sender, content, type, timestamp — pas d'id)
+├── dto/ChatMessageDto.java                 # record WebSocket validé (@NotBlank sender, @Size content) — pas d'id
 ├── mapper/ChatMessageMapper.java           # ChatMessageDto <-> ChatMessage, seul point de contact entre les deux
 ├── repositories/ChatMessageRepository.java # accès base (historique des 50 derniers messages)
 ├── services/
@@ -85,7 +87,10 @@ src/main/java/org/fab/chat/
 │   ├── ChatMessageServiceImpl.java         # implémentation, seule classe à appeler ChatMessageRepository/Mapper
 │   ├── ActiveUserService.java              # interface : tryAdd(), remove()
 │   └── ActiveUserServiceImpl.java          # implémentation en mémoire (Set thread-safe)
-└── exception/                              # UsernameAlreadyInUseException, StompExceptionHandler, ChatErrorPayload
+└── exception/                              # UsernameAlreadyInUseException, InvalidMessageException, StompExceptionHandler, ChatErrorPayload
+
+src/main/resources/db/migration/
+└── V1__create_chat_message_table.sql       # schéma géré par Flyway, exécuté automatiquement au démarrage
 
 src/main/resources/static/
 ├── index.html   # Popup de connexion + interface de chat
@@ -109,14 +114,18 @@ H2 en mode fichier est pratique pour développer en local (zéro installation, b
 - un seul processus peut écrire dans le fichier à la fois → incompatible avec plusieurs instances de l'application derrière un load balancer
 - pas d'outils d'administration, de monitoring ou de scaling adaptés à la production
 
-En production, utiliser une vraie base serveur — **PostgreSQL** est recommandé (ou MySQL/MariaDB selon l'infra existante). Grâce à la couche `services`/`repositories` déjà en place (Spring Data JPA), **aucun code métier ne change** : il suffit de swapper la configuration de connexion.
+En production, utiliser une vraie base serveur — **PostgreSQL** est recommandé (ou MySQL/MariaDB selon l'infra existante). Grâce à la couche `services`/`repositories` déjà en place (Spring Data JPA) et aux migrations Flyway déjà en place, **aucun code métier ne change** : il suffit de swapper la configuration de connexion, `ddl-auto` est déjà en `validate` et le schéma est déjà géré par des scripts SQL versionnés, pas par de la génération automatique.
 
-1. Ajouter le driver dans `pom.xml` (au lieu de/en plus de `h2`) :
+1. Ajouter le driver Postgres et le module Flyway correspondant dans `pom.xml` (au lieu de `h2`) :
    ```xml
    <dependency>
        <groupId>org.postgresql</groupId>
        <artifactId>postgresql</artifactId>
        <scope>runtime</scope>
+   </dependency>
+   <dependency>
+       <groupId>org.flywaydb</groupId>
+       <artifactId>flyway-database-postgresql</artifactId>
    </dependency>
    ```
 2. Adapter `application.properties` (idéalement via variables d'environnement, pas de mot de passe en dur) :
@@ -124,10 +133,9 @@ En production, utiliser une vraie base serveur — **PostgreSQL** est recommand�
    spring.datasource.url=jdbc:postgresql://<host>:5432/<database>
    spring.datasource.username=${DB_USER}
    spring.datasource.password=${DB_PASSWORD}
-   spring.jpa.hibernate.ddl-auto=validate
    spring.h2.console.enabled=false
    ```
-3. Gérer les migrations de schéma avec un outil dédié (Flyway ou Liquibase) plutôt que `ddl-auto=update`, qui est acceptable en dev mais risqué en production.
+3. Au premier démarrage sur la base Postgres vide, Flyway exécute automatiquement `V1__create_chat_message_table.sql` (syntaxe SQL standard, compatible H2 et PostgreSQL sans changement). Les migrations suivantes (`V2`, `V3`, ...) s'appliqueront de la même façon à chaque déploiement.
 
 ## Tester avec plusieurs utilisateurs
 
