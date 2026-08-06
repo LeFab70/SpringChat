@@ -20,8 +20,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
     @Override
     public ChatMessageDto save(ChatMessageDto chatMessageDto) {
-        chatMessageDto.setTimestamp(LocalDateTime.now());
-        ChatMessage saved = chatMessageRepository.save(chatMessageMapper.toEntity(chatMessageDto));
+        ChatMessageDto timestamped = chatMessageDto.withTimestamp(LocalDateTime.now());
+        ChatMessage saved = chatMessageRepository.save(chatMessageMapper.toEntity(timestamped));
         return chatMessageMapper.toDto(saved);
     }
 

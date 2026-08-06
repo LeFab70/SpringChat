@@ -1,8 +1,10 @@
 package org.fab.chat.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.fab.chat.dto.ChatMessageDto;
 import org.fab.chat.enums.MessageType;
+import org.fab.chat.exception.InvalidMessageException;
 import org.fab.chat.exception.UsernameAlreadyInUseException;
 import org.fab.chat.services.ActiveUserService;
 import org.fab.chat.services.ChatMessageService;
@@ -28,14 +30,17 @@ public class ChatController {
 
     @MessageMapping("/chat.sendMessage")
     @SendTo("/topic/public")
-    public ChatMessageDto sendMessage(@Payload ChatMessageDto chatMessageDto) {
+    public ChatMessageDto sendMessage(@Valid @Payload ChatMessageDto chatMessageDto) {
+        if (chatMessageDto.content() == null || chatMessageDto.content().isBlank()) {
+            throw new InvalidMessageException("Le message ne peut pas être vide.");
+        }
         return chatMessageService.save(chatMessageDto);
     }
 
     @MessageMapping("/chat.addUser")
-    public void addUser(@Payload ChatMessageDto chatMessageDto, SimpMessageHeaderAccessor headerAccessor) {
+    public void addUser(@Valid @Payload ChatMessageDto chatMessageDto, SimpMessageHeaderAccessor headerAccessor) {
 
-        String username = chatMessageDto.getSender();
+        String username = chatMessageDto.sender();
 
         if (!activeUserService.tryAdd(username)) {
             throw new UsernameAlreadyInUseException(username);
@@ -48,8 +53,7 @@ public class ChatController {
         // so their own "joined" event isn't duplicated between history and the live broadcast.
         sendHistoryTo(headerAccessor.getSessionId());
 
-        chatMessageDto.setType(MessageType.JOIN);
-        ChatMessageDto saved = chatMessageService.save(chatMessageDto);
+        ChatMessageDto saved = chatMessageService.save(chatMessageDto.withType(MessageType.JOIN));
 
         messagingTemplate.convertAndSend("/topic/public", saved);
     }

@@ -9,10 +9,10 @@ public class ChatMessageMapper {
 
     public ChatMessage toEntity(ChatMessageDto dto) {
         return ChatMessage.builder()
-                .sender(dto.getSender())
-                .content(dto.getContent())
-                .type(dto.getType())
-                .timestamp(dto.getTimestamp())
+                .sender(dto.sender())
+                .content(dto.content())
+                .type(dto.type())
+                .timestamp(dto.timestamp())
                 .build();
     }
 

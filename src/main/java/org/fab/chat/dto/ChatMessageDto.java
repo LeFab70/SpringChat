@@ -1,24 +1,25 @@
 package org.fab.chat.dto;
 
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.With;
 import org.fab.chat.enums.MessageType;
 
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class ChatMessageDto {
+@With
+public record ChatMessageDto(
 
-    private String sender;
-    private String content;
-    private MessageType type;
-    private LocalDateTime timestamp;
+        @NotBlank(message = "Le pseudo est requis.")
+        @Size(max = 50, message = "Le pseudo ne doit pas dépasser 50 caractères.")
+        String sender,
 
+        @Size(max = 1000, message = "Le message ne doit pas dépasser 1000 caractères.")
+        String content,
+
+        MessageType type,
+        LocalDateTime timestamp
+) {
 }
